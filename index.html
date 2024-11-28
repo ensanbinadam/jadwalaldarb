@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار جداول الضرب</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            direction: rtl;
+            background-color: #eef2f7;
+            margin: 0;
+        }
+
+        .quiz-container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .quiz-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .timer {
+            color: #ff5722;
+            margin: 20px 0;
+        }
+
+        .score {
+            font-size: 18px;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .question {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .answers {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            /* السماح للأزرار بالانتقال للسطر التالي */
+            gap: 10px;
+            /* مسافة بين الأزرار */
+        }
+
+        .answers button {
+            width: 60px;
+            height: 60px;
+            font-size: 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            /* يجعل الأزرار دائرية */
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .answers button:hover {
+            background: #0056b3;
+            transform: scale(1.1);
+            /* تكبير الزر عند التمرير */
+        }
+
+        .answers button.correct {
+            background: #28a745 !important;
+        }
+
+        .answers button.wrong {
+            background: #dc3545 !important;
+        }
+
+        .final-score {
+            font-size: 20px;
+            color: #28a745;
+            margin-top: 20px;
+        }
+
+        .restart-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .restart-btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="quiz-container">
+        <div class="quiz-header">
+            <div class="score">الدرجة: <span id="current-score">٠</span>/١٠٠</div>
+            <div class="question" id="question">جاري التحميل...</div>
+        </div>
+        <div id="question-number-container" style="margin-bottom: 20px;">السؤال: <span id="question-number">١</span>/١٠٠
+        </div>
+        <div class="answers" id="answers"></div>
+        <div class="timer">الوقت المتبقي: <span id="timer">١٠</span> ثانية</div>
+        <button class="restart-btn" id="restart-btn">البدء من جديد</button>
+        <div class="final-score" id="final-score" style="display: none;"></div>
+    </div>
+    <script>
+        const totalQuestions = 100;
+        const timerDuration = 10; // seconds per question
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timer;
+
+        // Convert number to Hindi numerals
+        function toHindiNumber(number) {
+            const hindiDigits = "٠١٢٣٤٥٦٧٨٩";
+            return String(number).split("").map(d => (d >= "0" && d <= "9" ? hindiDigits[d] : d)).join("");
+        }
+
+        // Generate all multiplication table questions
+        function generateQuestions() {
+            for (let i = 1; i <= 10; i++) {
+                for (let j = 1; j <= 10; j++) {
+                    questions.push({
+                        question: `${toHindiNumber(i)} × ${toHindiNumber(j)} = ؟`,
+                        correct: i * j,
+                        options: shuffleOptions([i * j, randomWrongAnswer(i, j), randomWrongAnswer(i, j)]).map(toHindiNumber)
+                    });
+                }
+            }
+            questions = shuffleOptions(questions).slice(0, totalQuestions);
+        }
+
+        // Shuffle array elements
+        function shuffleOptions(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        // Generate a random wrong answer
+        function randomWrongAnswer(i, j) {
+            let wrongAnswer;
+            do {
+                wrongAnswer = Math.floor(Math.random() * 100) + 1;
+            } while (wrongAnswer === i * j);
+            return wrongAnswer;
+        }
+
+        // Load a question into the quiz container
+        function loadQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                endQuiz();
+                return;
+            }
+
+            const currentQuestion = questions[currentQuestionIndex];
+            document.getElementById('question-number').textContent = toHindiNumber(currentQuestionIndex + 1);
+            document.getElementById('question').textContent = currentQuestion.question;
+            const answersDiv = document.getElementById('answers');
+            answersDiv.style.display = "flex"; // إعادة ضبط العرض كـ flex
+            answersDiv.innerHTML = "";
+            currentQuestion.options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.onclick = () => checkAnswer(button, option);
+                answersDiv.appendChild(button);
+            });
+
+            resetTimer();
+        }
+
+        // Check the selected answer
+        function checkAnswer(button, answer) {
+            clearInterval(timer);
+            const buttons = document.querySelectorAll('.answers button');
+            buttons.forEach(btn => btn.disabled = true); // Disable all buttons
+
+            const currentQuestion = questions[currentQuestionIndex];
+            const correctAnswerHindi = toHindiNumber(currentQuestion.correct);
+            if (answer === correctAnswerHindi) {
+                button.classList.add('correct');
+                score++;
+                updateScore();
+            } else {
+                button.classList.add('wrong');
+                buttons.forEach(btn => {
+                    if (btn.textContent === correctAnswerHindi) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+            }, 1000);
+        }
+
+        // Update the score display
+        function updateScore() {
+            const scoreElement = document.getElementById('current-score');
+            scoreElement.textContent = toHindiNumber(score);
+        }
+
+        // End the quiz and show the final score
+        function endQuiz() {
+            document.getElementById('question').textContent = "انتهى الاختبار!";
+            document.getElementById('answers').style.display = "none";
+            const grade = calculateGrade(score, totalQuestions);
+            document.getElementById('final-score').textContent = `النتيجة النهائية: ${toHindiNumber(score)} من ${toHindiNumber(totalQuestions)} (${grade})`;
+            document.getElementById('final-score').style.display = "block";
+        }
+
+        // Calculate the grade based on the score
+        function calculateGrade(score, total) {
+            const percentage = (score / total) * 100;
+            if (percentage >= 90) return "ممتاز";
+            if (percentage >= 75) return "جيد جدًا";
+            if (percentage >= 50) return "جيد";
+            return "بحاجة إلى تحسين";
+        }
+
+        // Reset and start the timer
+        function resetTimer() {
+            let timeLeft = timerDuration;
+            document.getElementById('timer').textContent = toHindiNumber(timeLeft);
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = toHindiNumber(timeLeft);
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    currentQuestionIndex++;
+                    loadQuestion();
+                }
+            }, 1000);
+        }
+
+        // Initialize the quiz
+        generateQuestions();
+        loadQuestion();
+
+        // Restart button functionality
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            currentQuestionIndex = 0;
+            score = 0;
+            document.getElementById('answers').style.display = "flex"; // تأكد من إعادة تعيين العرض كـ flex
+            document.getElementById('final-score').style.display = "none";
+            updateScore();
+            loadQuestion();
+        });
+    </script>
+</body>
+
+</html>
