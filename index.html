@@ -49,9 +49,7 @@
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            /* السماح للأزرار بالانتقال للسطر التالي */
             gap: 10px;
-            /* مسافة بين الأزرار */
         }
 
         .answers button {
@@ -62,7 +60,6 @@
             color: white;
             border: none;
             border-radius: 50%;
-            /* يجعل الأزرار دائرية */
             cursor: pointer;
             transition: background-color 0.3s, transform 0.2s;
             display: flex;
@@ -73,7 +70,6 @@
         .answers button:hover {
             background: #0056b3;
             transform: scale(1.1);
-            /* تكبير الزر عند التمرير */
         }
 
         .answers button.correct {
@@ -140,28 +136,48 @@
         function generateQuestions() {
             for (let i = 1; i <= 10; i++) {
                 for (let j = 1; j <= 10; j++) {
+                    const correctAnswer = i * j;
+                    const options = generateOptions(i, j, correctAnswer);
                     questions.push({
                         question: `${toHindiNumber(i)} × ${toHindiNumber(j)} = ؟`,
-                        correct: i * j,
-                        options: shuffleOptions([i * j, randomWrongAnswer(i, j), randomWrongAnswer(i, j)]).map(toHindiNumber)
+                        correct: correctAnswer,
+                        options: options.map(toHindiNumber)
                     });
                 }
             }
             questions = shuffleOptions(questions).slice(0, totalQuestions);
         }
 
+        // Generate options including the correct answer
+        function generateOptions(i, j, correctAnswer) {
+            const options = new Set();
+            options.add(correctAnswer); // Add the correct answer
+
+            while (options.size < 3) {
+                const wrongAnswer = randomWrongAnswer(i, j);
+                options.add(wrongAnswer);
+            }
+
+            return shuffleOptions(Array.from(options));
+        }
+
+        // Generate a random wrong answer from the tables of i and j
+        function randomWrongAnswer(i, j) {
+            const tableI = Array.from({ length: 10 }, (_, k) => i * (k + 1));
+            const tableJ = Array.from({ length: 10 }, (_, k) => j * (k + 1));
+            const combinedTables = [...new Set([...tableI, ...tableJ])]; // Ensure unique values
+            let wrongAnswer;
+
+            do {
+                wrongAnswer = combinedTables[Math.floor(Math.random() * combinedTables.length)];
+            } while (wrongAnswer === i * j);
+
+            return wrongAnswer;
+        }
+
         // Shuffle array elements
         function shuffleOptions(array) {
             return array.sort(() => Math.random() - 0.5);
-        }
-
-        // Generate a random wrong answer
-        function randomWrongAnswer(i, j) {
-            let wrongAnswer;
-            do {
-                wrongAnswer = Math.floor(Math.random() * 100) + 1;
-            } while (wrongAnswer === i * j);
-            return wrongAnswer;
         }
 
         // Load a question into the quiz container
@@ -175,7 +191,6 @@
             document.getElementById('question-number').textContent = toHindiNumber(currentQuestionIndex + 1);
             document.getElementById('question').textContent = currentQuestion.question;
             const answersDiv = document.getElementById('answers');
-            answersDiv.style.display = "flex"; // إعادة ضبط العرض كـ flex
             answersDiv.innerHTML = "";
             currentQuestion.options.forEach(option => {
                 const button = document.createElement('button');
@@ -262,7 +277,7 @@
         document.getElementById('restart-btn').addEventListener('click', () => {
             currentQuestionIndex = 0;
             score = 0;
-            document.getElementById('answers').style.display = "flex"; // تأكد من إعادة تعيين العرض كـ flex
+            document.getElementById('answers').style.display = "flex";
             document.getElementById('final-score').style.display = "none";
             updateScore();
             loadQuestion();
